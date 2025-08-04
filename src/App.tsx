@@ -6,6 +6,43 @@ import { welcomeElements } from './welcomeMessage';
 
 function App() {
   const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
+  const [initialElements, setInitialElements] = useState<any[]>(welcomeElements);
+
+  // Load template if specified in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const templateName = params.get('template');
+    
+    if (templateName) {
+      const templateFile = `${templateName}.excalidraw`;
+      
+      fetch(templateFile)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Template file ${templateFile} not found (status: ${response.status})`);
+          }
+          return response.json();
+        })
+        .then(templateData => {
+          if (templateData.elements) {
+            // Update both the initial elements and the excalidraw instance
+            setInitialElements(templateData.elements);
+            if (excalidrawAPI) {
+              excalidrawAPI.updateScene({
+                elements: templateData.elements,
+                appState: templateData.appState || {}
+              });
+            }
+          } else {
+            console.warn('⚠️ Template data does not contain elements property');
+          }
+        })
+        .catch(error => {
+          console.error('❌ Error loading template:', error.message);
+          // If template is not found, keep the default welcome elements
+        });
+    }
+  }, [excalidrawAPI]); // Re-run when excalidrawAPI becomes available
 
   useEffect(() => {
     if (!excalidrawAPI) return;
@@ -20,7 +57,6 @@ function App() {
         fetch(url)
           .then(response => response.json())
           .then(data => {
-            console.log('Library data from ' + url + ':', data);
             if (data.libraryItems?.length) {
               return data.libraryItems;
             } else if (data.library?.length) {
@@ -40,9 +76,6 @@ function App() {
     )
       .then(results => {
         const allLibraryItems = results.flat();
-        
-        console.log('Processed library items:', allLibraryItems);
-        
         if (allLibraryItems.length > 0) {
           excalidrawAPI.updateLibrary({
             libraryItems: allLibraryItems,
@@ -66,15 +99,10 @@ function App() {
             gridSize: 20,
             openSidebar: { name: "library" },
             defaultSidebarDockedPreference: true,
-            selectedElementIds: {
-              "welcome-title": true,
-              "support-text": true
-            },
-            selectedGroupIds: {
-              "welcome-message-group": true
-            }
+            selectedElementIds: {},
+            selectedGroupIds: {}
           },
-          elements: welcomeElements
+          elements: initialElements
         }}
         gridModeEnabled
         excalidrawAPI={setExcalidrawAPI}
