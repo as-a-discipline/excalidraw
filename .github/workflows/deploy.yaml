@@ -18,7 +18,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Make Deploy
+      - name: Make Install
+        run: make install
+
+      - name: Make Builde & Deploy
         run: make build
 
       - name: Upload build artifacts
